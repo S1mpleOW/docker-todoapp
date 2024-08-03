@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: s1mpleow/backend.todoapp:latest
+    container_name: backend.todoapp
+    networks:
+      - backend
+    depends_on:
+      - database
+      - redis
+    environment:
+      - DB_HOST=database
+      - DB_PORT=3306
+      - DB_USER=admin
+      - DB_PASS=admin
+      - DB_NAME=todo_list
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./backend-logs:/app/logs
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_URL=http://backend:5000
+    image: s1mpleow/frontend.todoapp:latest
+    container_name: frontend.todoapp
+    networks:
+      - backend
+    depends_on:
+      - backend
+    ports:
+      - '3000:80'
+
+  database:
+    image: mysql:8.0
+    networks:
+      - db
+      - backend
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: todo_list
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: admin
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./todo_list.sql:/docker-entrypoint-initdb.d/init.sql
+
+  redis:
+    image: redis:latest
+    networks:
+      - redis
+      - backend
+    volumes:
+      - redis-data:/data
+
+networks:
+  backend:
+  db:
+  redis:
+
+volumes:
+  backend-logs:
+  db-data:
+  redis-data:
