@@ -10,8 +10,10 @@ services:
     networks:
       - backend
     depends_on:
-      - database
-      - redis
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       - DB_HOST=database
       - DB_PORT=3306
@@ -19,23 +21,36 @@ services:
       - DB_PASS=admin
       - DB_NAME=todo_list
       - REDIS_URL=redis://redis:6379
+    ports:
+      - '5000:5000'
     volumes:
       - ./backend-logs:/app/logs
+    healthcheck:
+      test: 'curl -s -I http://localhost:5000/health | head -n 1 | grep 200'
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - REACT_APP_API_URL=http://backend:5000
+        - REACT_APP_API_URL=http://localhost:5000
     image: s1mpleow/frontend.todoapp:latest
     container_name: frontend.todoapp
     networks:
       - backend
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - '3000:80'
+    healthcheck:
+      test: 'curl -s -I http://localhost:80/ | head -n 1 | grep 200'
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   database:
     image: mysql:8.0
@@ -50,6 +65,11 @@ services:
     volumes:
       - db-data:/var/lib/mysql
       - ./todo_list.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '--silent']
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   redis:
     image: redis:latest
@@ -58,6 +78,11 @@ services:
       - backend
     volumes:
       - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
 networks:
   backend:

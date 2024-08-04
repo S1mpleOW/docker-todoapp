@@ -32,7 +32,12 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 app.use((req, res, next) => {
-	loggerHttp.info('HTTP request', req.url);
+	loggerHttp.info({
+		method: req.method,
+		url: req.url,
+		body: req.body,
+		timestamp: new Date(),
+	});
 	next();
 });
 
@@ -87,6 +92,11 @@ DB.connect((err) => {
 app.get('/', (req, res) => {
 	res.send('<h1 style="text-align: center;">Welcome to the Todo List API!</h1>');
 	loggerApp.info('Todo List API accessed', req);
+});
+
+app.get('/health', (req, res) => {
+	res.status(200).json({ status: 'UP' });
+	loggerApp.info('Health check', req);
 });
 
 // Fetching data from Database or Redis
